@@ -1,0 +1,249 @@
+
+<!ELEMENT uxcutor (ctypes?, variables?, mmfs?, functions?, index*, service*)>
+
+<!ELEMENT ctypes (enum*, struct*, union*, typedef*)>
+
+<!--add-->
+<!ELEMENT typedef (#PCDATA)>
+
+<!ELEMENT variables (member*)>
+
+<!ELEMENT mmfs (mmf*)>
+
+<!ELEMENT mmf ((map|loop|switch)*)>
+<!ATTLIST mmf
+	name CDATA #REQUIRED 
+	inherit CDATA #IMPLIED 
+	protocol CDATA #IMPLIED 
+	operation CDATA #IMPLIED 
+	type CDATA #IMPLIED
+>
+
+<!ELEMENT map ((map|loop|switch)*)>
+<!ATTLIST map
+	mparam CDATA #IMPLIED
+	value CDATA #IMPLIED 
+	isset CDATA #IMPLIED 
+	length CDATA #IMPLIED 
+	mapper CDATA #IMPLIED 
+	mode CDATA #IMPLIED 
+>
+<!-- MMF loop element -->
+<!ELEMENT loop ((map|loop|switch)*)>
+<!ATTLIST loop
+	mparam CDATA #IMPLIED 
+	value CDATA #IMPLIED
+	isset CDATA #IMPLIED 
+	length CDATA #IMPLIED 
+	mapper CDATA #IMPLIED 
+	counter CDATA #IMPLIED 
+	max CDATA #IMPLIED 
+>
+<!-- MMF switch element -->
+<!ELEMENT switch (onentry,case*,default)>
+<!ATTLIST switch
+	value CDATA #IMPLIED 
+	name CDATA #REQUIRED 
+>
+<!-- MMF case element -->
+<!ELEMENT case ((map|loop|switch|call|stat)*)>
+<!ATTLIST case
+	value CDATA #IMPLIED 
+	cmpop (EQ|LT|LE|GT|GE|NE) "EQ" 
+	target CDATA #REQUIRED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+<!-- MMF default element -->
+<!ELEMENT default ((map|loop|switch|call|stat)*)>
+<!ATTLIST default
+	target CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT functions ((function|script)*)>
+
+<!ELEMENT function (parameter*, str)>
+
+<!ATTLIST function
+	name CDATA #REQUIRED 
+	acttype (DLL|SYS|LUA) "DLL" 
+	dll CDATA #IMPLIED 
+	action CDATA #IMPLIED 
+>
+<!-- function parameter element -->
+<!ELEMENT parameter EMPTY>
+<!ATTLIST parameter
+	name CDATA #REQUIRED 
+	type CDATA #REQUIRED 
+	value CDATA #REQUIRED 
+>
+<!ELEMENT str (#PCDATA)>
+<!-- script element -->
+<!ELEMENT script (#PCDATA)>
+<!ATTLIST script
+	type (LUA) "LUA" 
+>
+
+<!-- index element -->
+<!ELEMENT index (member*)>
+<!ATTLIST index
+	name CDATA #REQUIRED 
+	id CDATA #IMPLIED 
+>
+
+<!-- service element -->
+<!ELEMENT service (variables?,session?,functions?,mmfs?,fsm?)>
+<!ATTLIST service 
+	name CDATA #REQUIRED 
+	id CDATA #REQUIRED 
+>
+
+<!ELEMENT session (saved*, member*, index*)>
+<!ATTLIST session
+	saveend CDATA #IMPLIED 
+>
+<!--add-->
+<!ELEMENT member (#PCDATA)>
+
+<!ELEMENT saved ((enum|struct|union)?)>
+<!ATTLIST saved
+	name CDATA #REQUIRED 
+	type CDATA #IMPLIED 
+	value CDATA #IMPLIED 
+>
+
+<!--add-->
+<!ELEMENT enum (#PCDATA)>
+<!ELEMENT struct (#PCDATA)>
+<!ELEMENT union (#PCDATA)>
+
+<!ELEMENT fsm (start,(recv|send|invoke|wait|switch|label)*,stop)>
+<!ATTLIST fsm
+	onerror CDATA #IMPLIED 
+	ontimeout CDATA #IMPLIED 
+	stat CDATA #IMPLIED 
+>
+
+<!ELEMENT start (onentry?,onrecv*,default?)>
+<!ATTLIST start
+	name CDATA #REQUIRED 
+>
+
+<!ELEMENT stop (onentry?)>
+<!ATTLIST stop
+	name CDATA #REQUIRED 
+>
+
+<!ELEMENT recv (onentry?,oncall?,onsuccess?,onerror?,ontimeout?,onmismatch?)>
+<!ATTLIST recv
+	name CDATA #REQUIRED 
+	protocol CDATA #REQUIRED 
+	operation CDATA #IMPLIED 
+	type CDATA #IMPLIED 
+	timeout CDATA #IMPLIED 
+	queuing CDATA #IMPLIED 
+>
+
+<!ELEMENT send (onentry?,oncall?,onsuccess?,onerror?)>
+<!ATTLIST send
+	name CDATA #REQUIRED 
+	protocol CDATA #REQUIRED 
+	operation CDATA #IMPLIED 
+	type CDATA #IMPLIED 
+>
+
+<!ELEMENT invoke (onentry?,onsend?,onrecv?,onsuccess?,onerror?,ontimeout?)>
+<!ATTLIST recv
+	name CDATA #REQUIRED 
+	protocol CDATA #REQUIRED 
+	operation CDATA #IMPLIED 
+	type CDATA #IMPLIED 
+	timeout CDATA #IMPLIED 
+>
+
+<!ELEMENT wait (onentry?,onrecv*,ontimeout?,onmismatch?)>
+<!ATTLIST wait
+	name CDATA #REQUIRED 
+	timeout CDATA #IMPLIED 
+>
+
+<!ELEMENT label (onentry?,onsuccess?,onerror?)>
+<!ATTLIST label
+	name CDATA #REQUIRED 
+>
+
+<!ELEMENT onentry ((call|stat)*)>
+<!ATTLIST onentry
+	store CDATA #IMPLIED 
+>
+
+<!ELEMENT oncall ((call|stat)*)>
+<!ATTLIST oncall
+	mmf CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT onsend ((call|stat)*)>
+<!ATTLIST onsend
+	mmf CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT onrecv ((call|stat)*)>
+<!ATTLIST onrecv
+	mmf CDATA #IMPLIED 
+	target CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT onsuccess ((call|stat)*)>
+<!ATTLIST onsuccess
+	target CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT onerror ((call|stat)*)>
+<!ATTLIST onerror
+	target CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT ontimeout ((call|stat)*)>
+<!ATTLIST ontimeout
+	target CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT onmismatch ((call|stat)*)>
+<!ATTLIST onmismatch
+	target CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+
+<!ELEMENT call (parameter*,str)>
+<!ATTLIST call
+	type CDATA #IMPLIED 
+	dll CDATA #IMPLIED 
+	function CDATA #IMPLIED 
+	mmf CDATA #IMPLIED 
+	store CDATA #IMPLIED 
+	checkerr CDATA #IMPLIED 
+>
+
+<!ELEMENT stat EMPTY>
+<!ATTLIST stat
+	type CDATA #IMPLIED 
+	item CDATA #REQUIRED 
+	value CDATA #REQUIRED 
+	operation (INC|GET|SET) "INC" 
+>

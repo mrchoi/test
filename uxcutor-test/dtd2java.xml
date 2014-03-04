@@ -1,0 +1,35 @@
+<!--
+- Author	: Debadatta Mishra
+- Purpose	: Ant script to convert xml dt to java classes
+-->
+<project name="dtd2javabeans" basedir="dtd" default="build">
+
+	<property name="bin.dir"           	value="${basedir}/bin"/>
+	<property name="gen.dir"           	value="${basedir}/generated"/>
+	<property name="build.dir"          value="${basedir}/build"/>
+	<property name="dtd.file.name"     	value="${basedir}/xcpt.dtd"/>
+	<property name="jar.file.name"     	value="${build.dir}/schema-dtd.jar"/>
+
+	<target name="init">
+		<delete dir="${gen.dir}"/>
+		<mkdir dir="${gen.dir}"/>
+		<delete dir="${bin.dir}"/>
+		<mkdir dir="${bin.dir}"/>
+		<delete dir="${build.dir}"/>
+		<mkdir dir="${build.dir}"/>
+	</target>
+
+	<target name="dtd2java" depends="init">
+		<!-- DTD to Java bean classes -->
+		<exec executable="xjc">
+			<arg line="-dtd ${dtd.file.name}"/>
+			<arg line="-d ${gen.dir}"/>
+			<arg line="-p com.mobilepark.uxcutor.dtd"/>
+		</exec>
+	</target>
+
+	<target name="build" depends="dtd2java">
+		<javac srcdir="${gen.dir}" destdir="${bin.dir}" />
+	    <jar destfile="${jar.file.name}/" basedir="${bin.dir}"/>
+	</target>
+</project>

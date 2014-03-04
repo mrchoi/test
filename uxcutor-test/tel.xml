@@ -1,0 +1,201 @@
+<uxcutor>
+	<service name="msc_cap" id="1">
+		<functions>
+			<function name="write_tcap_uni" acttype="SYS" action="upa_tcapcall_write_uni">
+				<parameter name="orgaddr" type="char*"/>
+				<parameter name="dstaddr" type="char*"/>
+			</function>
+			<function name="write_tcap_begin" acttype="SYS" action="upa_tcapcall_write_begin">
+				<parameter name="usrdid" type="int"/>
+				<parameter name="orgaddr" type="char*"/>
+				<parameter name="dstaddr" type="char*"/>
+			</function>
+			
+			<function name="set_value" acttype="LUA">
+				<![CDATA[
+					local v = luxc_sdmvars.get(sdmvars,1)
+					luxc_sdmvars.set(sdmvars,0,v)
+				]]>
+			</function>
+			<function name="is_equal" acttype="LUA">
+				<![CDATA[
+					local rv
+					local a = luxc_sdmvars.get(sdmvars,0)
+					local b = luxc_sdmvars.get(sdmvars,1)
+					if a == b then rv = 1 else rv = 0 end 
+					luxc_sdmvars.set(sdmvars,2, rv )
+				]]>
+			</function>
+		</functions>
+		<mmfs>
+			<mmf name="tx_idp" protocol="CAP3" operation="InitialDP">
+				<map mparam="serviceKey" value="serviceKey" mapper="moct2sint"/>
+				<map mparam="callingPartyNumber" value="'481162853126377920'" mapper="mnbcd2sstr"/>
+				<map mparam="callingPartysCategory" value="0x'0a'"/>
+				<map mparam="iPSSPCapabilities" value="'00'" mapper="moct2sstr"/>
+				<map mparam="locationNumber" value="'04972618010722'" mapper="moct2sstr"/>
+				<map mparam="highLayerCompatibility" value="'9181'" mapper="moct2sstr"/>
+				<map mparam="bearerCapability">
+					<map mparam="bearerCap" value="'8090A3'" mapper="moct2sstr"/>
+				</map>
+			</mmf>
+			<mmf name="rx_rrb" protocol="CAP3" operation="RequestReportBCSME">
+				<map mparam="bcsmEvents[0]">
+					<map mparam="eventTypeBCSM" value="'routeSelectFailure'"/>
+					<map mparam="monitorMode" value="'interrupted'"/>
+					<map mparam="legID">
+						<map mparam="sendingSideID" value="'02'" mapper="moct2sstr"/>
+					</map>
+				</map>
+				<map mparam="bcsmEvents[1]">
+					<map mparam="eventTypeBCSM" value="'oCalledPartyBusy'"/>
+					<map mparam="monitorMode" value="'interrupted'"/>
+					<map mparam="legID">
+						<map mparam="sendingSideID" value="'02'" mapper="moct2sstr"/>
+					</map>
+				</map>
+				<map mparam="bcsmEvents[2]">
+					<map mparam="eventTypeBCSM" value="'oNoAnswer'"/>
+					<map mparam="monitorMode" value="'interrupted'"/>
+					<map mparam="legID">
+						<map mparam="sendingSideID" value="'02'" mapper="moct2sstr"/>
+					</map>
+					<map mparam="dpSpecificCriteria">
+						<map mparam="applicationTimer" value="'80'" mapper="moct2sstr"/>
+					</map>
+				</map>
+			</mmf>
+		</mmfs>
+		<session>
+	        <member name="rv" type="int"/>
+	        <member name="sudid" type="int"/>
+	        <member name="spdid" type="int"/>
+	        <member name="usrdid" type="int"/>
+	        <member name="orgaddr" type="char[32]"/>
+	        <member name="dstaddr" type="char[32]"/>
+			<member name="rcvd_iid" type="int"/>
+	        <member name="callReferenceNumber" type="char[16]"/>
+	        <member name="serviceInteractionIndicatorsTwo">
+				<struct><member name="bothwayThroughConnectionInd" type="int"/></struct>
+			</member>
+	        <member name="bcsmEventsCount" type="int"/>
+			<member name="bcsmEvents">
+				<struct array="[10]">
+					<member name="eventTypeBCSM" type="int"/>
+					<member name="monitorMode" type="int"/> 
+					<struct><member name="legID">
+						<struct><member name="sendingSideID" type="char[32]"/></struct>
+					</member></struct>
+					<struct><member name="dpSpecificCriteria">
+						<struct><member name="applicationTimer" type="int"/></struct>
+					</member></struct>
+				</struct>
+			</member>
+		</session>
+		<fsm onerror="STOP" ontimeout="STOP">
+			<start name="START">
+				<onentry>
+					<call function="set_value(usrdid,0)"/>
+				</onentry>
+			</start>
+
+			<send name="send_idp" protocol="CAP3" operation="InitialDP" trantype="BEGIN" comptype="INVOKE">
+				<oncall>
+					<call function="write_tcap_begin(usrdid,orgaddr,dstaddr)"/>
+					<call function="write_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="tx_idp"/>
+				</oncall>
+			</send>
+			<wait name="WAIT_INITIAL" timeout="5000">
+				<onrecv target="recv_rrb"/>
+				<onrecv target="recv_ac"/>
+				<onrecv target="recv_continue"/>
+				<onrecv target="recv_connect"/>
+				<onrecv target="recv_cireq"/>
+				<default target="STOP"/>
+			</wait>
+			<recv name="recv_rrb" protocol="CAP3" operation="RequestReportBCSME" trantype="CONTINUE" comptype="INVOKE">
+				<oncall>
+					<call function="read_tcap_invoke(0,0)" mmf="rx_rrb"/>
+					<call function="read_tcap_continue(spdid,usrdid,dstaddr)"/>
+				</oncall>
+				<onsuccess target="WAIT_INITIAL"/>
+				<onerror target="STOP"/>
+			</recv>
+			<recv name="recv_ac" protocol="CAP3" operation="ApplyCharging" trantype="CONTINUE" comptype="INVOKE">
+				<oncall>
+					<call function="read_tcap_continue(spdid,usrdid,dstaddr)"/>
+					<call function="read_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="rx_ac_ioc"/>
+				</oncall>
+				<onsuccess target="WAIT_INITIAL"/>
+				<onerror target="STOP"/>
+			</recv>
+			<recv name="recv_cireq" protocol="CAP3" operation="CallInformationRequest" trantype="CONTINUE" comptype="INVOKE">
+				<oncall>
+					<call function="read_tcap_continue(spdid,usrdid,dstaddr)"/>
+					<call function="read_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="rx_cireq"/>
+				</oncall>
+				<onsuccess target="WAIT_INITIAL"/>
+				<onerror target="STOP"/>
+			</recv>
+			<recv name="recv_continue" protocol="CAP3" operation="Continue" trantype="CONTINUE" comptype="INVOKE">
+				<oncall>
+					<call function="read_tcap_continue(spdid,usrdid,dstaddr)"/>
+					<call function="read_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="rx_continue"/>
+				</oncall>
+				<onsuccess target="OPEN"/>
+				<onerror target="STOP"/>
+			</recv>
+			<label name="OPEN"/>
+			<wait name="waiting" timeout="sleep_sec">
+				<onentry>
+					<call function="get_sleep_sec(sleep_sec)"/>
+				</onentry>
+				<default target="FINAL"/>
+				<ontimeout target="send_acr_or_goto_final"/>
+			</wait>
+			<switch name="send_acr_or_goto_final" value="rv">
+				<onentry>
+					<call function="is_left_greater_or_equal(elapsed_sec,call_duration,rv)"/>
+				</onentry>
+				<case value="1" target="FINAL"/>
+				<default target="send_acr"/>
+			</switch>
+			<send name="send_acr" protocol="CAP3" operation="ApplyChargingReport">
+				<oncall>
+					<call function="write_tcap_continue(spdid,usrdid,orgaddr)"/>
+					<call function="write_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="tx_acr_moc"/>
+				</oncall>
+			</send>
+			<recv name="recv_ac_moc" protocol="CAP3" operation="ApplyCharging" trantype="CONTINUE" comptype="INVOKE">
+				<oncall>
+					<call function="read_tcap_continue(spdid,usrdid,dstaddr)"/>
+					<call function="read_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="rx_ac_moc"/>
+				</oncall>
+				<onsuccess target="OPEN"/>
+				<onerror target="STOP"/>
+			</recv>
+			<label name="FINAL"/>
+			<send name="send_acr_foc" protocol="CAP3" operation="ApplyChargingReport">
+				<oncall>
+					<call function="write_tcap_continue(spdid,usrdid,orgaddr)"/>
+					<call function="write_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="tx_acr_foc"/>
+				</oncall>
+			</send>
+			<recv name="recv_end" protocol="CAP3" operation="ReleaseCall" trantype="END" comptype="INVOKE">
+				<oncall>
+					<call function="read_tcap_end(spdid,usrdid,)"/>
+					<call function="read_tcap_invoke(rcvd_iid,rcvd_lid)" mmf="rx_rc"/>
+				</oncall>
+				<onsuccess target="STOP"/>
+				<ontimeout target="send_endnull"/>
+			</recv>
+			<send name="send_endnull" protocol="CAP3" trantype="END">
+				<oncall>
+					<call function="write_tcap_end(spdid,usrdid,)"/>
+				</oncall>
+			</send>
+			<stop name="STOP">
+			</stop>
+		</fsm>
+	</service>
+</uxcutor>
